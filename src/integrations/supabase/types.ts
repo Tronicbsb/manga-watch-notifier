@@ -9,7 +9,118 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      fansub_sites: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      manga_chapters: {
+        Row: {
+          chapter_number: string
+          chapter_title: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          manga_id: string
+          read_at: string | null
+          release_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          chapter_number: string
+          chapter_title?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          manga_id: string
+          read_at?: string | null
+          release_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chapter_number?: string
+          chapter_title?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          manga_id?: string
+          read_at?: string | null
+          release_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manga_chapters_manga_id_fkey"
+            columns: ["manga_id"]
+            isOneToOne: false
+            referencedRelation: "mangas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mangas: {
+        Row: {
+          created_at: string
+          fansub_site_id: string
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fansub_site_id: string
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fansub_site_id?: string
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mangas_fansub_site_id_fkey"
+            columns: ["fansub_site_id"]
+            isOneToOne: false
+            referencedRelation: "fansub_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

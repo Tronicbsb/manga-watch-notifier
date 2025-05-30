@@ -7,157 +7,88 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Globe, Plus, Bell, Trash2, Edit } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-
-interface FansubSite {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-}
-
-interface Manga {
-  id: string;
-  title: string;
-  fansubSiteId: string;
-  fansubSiteName: string;
-  lastChapter?: string;
-  isActive: boolean;
-}
+import { BookOpen, Globe, Plus, Bell, Trash2, LogOut, Eye } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useFansubSites } from "@/hooks/useFansubSites";
+import { useMangas } from "@/hooks/useMangas";
+import { AuthForm } from "@/components/AuthForm";
+import { ChaptersList } from "@/components/ChaptersList";
 
 const Index = () => {
-  const { toast } = useToast();
-  const [fansubSites, setFansubSites] = useState<FansubSite[]>([
-    {
-      id: "1",
-      name: "Mangá Livre",
-      url: "https://mangalivre.net",
-      description: "Site brasileiro de mangás"
-    },
-    {
-      id: "2", 
-      name: "Union Mangás",
-      url: "https://unionmangas.top",
-      description: "Comunidade de fansub brasileira"
-    }
-  ]);
-
-  const [mangas, setMangas] = useState<Manga[]>([
-    {
-      id: "1",
-      title: "One Piece",
-      fansubSiteId: "1",
-      fansubSiteName: "Mangá Livre",
-      lastChapter: "Cap. 1095",
-      isActive: true
-    },
-    {
-      id: "2",
-      title: "Attack on Titan",
-      fansubSiteId: "2", 
-      fansubSiteName: "Union Mangás",
-      lastChapter: "Cap. 139",
-      isActive: true
-    }
-  ]);
-
+  const { user, signOut } = useAuth();
+  const { sites, addSite, deleteSite } = useFansubSites();
+  const { mangas, addManga, toggleMangaStatus, deleteManga } = useMangas();
+  
   const [newSite, setNewSite] = useState({ name: "", url: "", description: "" });
-  const [newManga, setNewManga] = useState({ title: "", fansubSiteId: "", lastChapter: "" });
+  const [newManga, setNewManga] = useState({ title: "", fansub_site_id: "" });
   const [isSiteDialogOpen, setIsSiteDialogOpen] = useState(false);
   const [isMangaDialogOpen, setIsMangaDialogOpen] = useState(false);
+  const [selectedMangaId, setSelectedMangaId] = useState<string | null>(null);
 
-  const addFansubSite = () => {
-    if (!newSite.name || !newSite.url) {
-      toast({
-        title: "Erro",
-        description: "Nome e URL são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
+  if (!user) {
+    return <AuthForm />;
+  }
 
-    const site: FansubSite = {
-      id: Date.now().toString(),
-      name: newSite.name,
-      url: newSite.url,
-      description: newSite.description
-    };
-
-    setFansubSites([...fansubSites, site]);
+  const handleAddSite = async () => {
+    if (!newSite.name || !newSite.url) return;
+    
+    await addSite(newSite);
     setNewSite({ name: "", url: "", description: "" });
     setIsSiteDialogOpen(false);
-    
-    toast({
-      title: "Site adicionado!",
-      description: `${site.name} foi adicionado com sucesso`
-    });
   };
 
-  const addManga = () => {
-    if (!newManga.title || !newManga.fansubSiteId) {
-      toast({
-        title: "Erro", 
-        description: "Título e site são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const selectedSite = fansubSites.find(site => site.id === newManga.fansubSiteId);
-    if (!selectedSite) return;
-
-    const manga: Manga = {
-      id: Date.now().toString(),
-      title: newManga.title,
-      fansubSiteId: newManga.fansubSiteId,
-      fansubSiteName: selectedSite.name,
-      lastChapter: newManga.lastChapter,
-      isActive: true
-    };
-
-    setMangas([...mangas, manga]);
-    setNewManga({ title: "", fansubSiteId: "", lastChapter: "" });
+  const handleAddManga = async () => {
+    if (!newManga.title || !newManga.fansub_site_id) return;
+    
+    await addManga(newManga);
+    setNewManga({ title: "", fansub_site_id: "" });
     setIsMangaDialogOpen(false);
-    
-    toast({
-      title: "Mangá adicionado!",
-      description: `${manga.title} foi adicionado à sua lista`
-    });
   };
 
-  const toggleMangaStatus = (mangaId: string) => {
-    setMangas(mangas.map(manga => 
-      manga.id === mangaId 
-        ? { ...manga, isActive: !manga.isActive }
-        : manga
-    ));
+  const handleSignOut = async () => {
+    await signOut();
   };
 
-  const deleteFansubSite = (siteId: string) => {
-    setFansubSites(fansubSites.filter(site => site.id !== siteId));
-    setMangas(mangas.filter(manga => manga.fansubSiteId !== siteId));
-    toast({
-      title: "Site removido",
-      description: "Site e mangás associados foram removidos"
-    });
-  };
+  const activeMangas = mangas.filter(manga => manga.is_active);
 
-  const deleteManga = (mangaId: string) => {
-    setMangas(mangas.filter(manga => manga.id !== mangaId));
-    toast({
-      title: "Mangá removido",
-      description: "Mangá removido da sua lista"
-    });
-  };
-
-  const activeMangas = mangas.filter(manga => manga.isActive);
+  if (selectedMangaId) {
+    const selectedManga = mangas.find(m => m.id === selectedMangaId);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-manga-50 to-manga-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedMangaId(null)}
+            >
+              ← Voltar
+            </Button>
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+          <ChaptersList 
+            mangaId={selectedMangaId} 
+            mangaTitle={selectedManga?.title || ''} 
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-manga-50 to-manga-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div></div>
+            <Button variant="ghost" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
+            </Button>
+          </div>
           <h1 className="text-4xl font-bold mb-2 gradient-text">
             Manga Tracker
           </h1>
@@ -174,7 +105,7 @@ const Index = () => {
               <Globe className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{fansubSites.length}</div>
+              <div className="text-2xl font-bold">{sites.length}</div>
             </CardContent>
           </Card>
 
@@ -242,31 +173,19 @@ const Index = () => {
                       </Label>
                       <select
                         id="manga-site"
-                        value={newManga.fansubSiteId}
-                        onChange={(e) => setNewManga({ ...newManga, fansubSiteId: e.target.value })}
+                        value={newManga.fansub_site_id}
+                        onChange={(e) => setNewManga({ ...newManga, fansub_site_id: e.target.value })}
                         className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <option value="">Selecione um site</option>
-                        {fansubSites.map(site => (
+                        {sites.map(site => (
                           <option key={site.id} value={site.id}>{site.name}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="manga-chapter" className="text-right">
-                        Último Cap.
-                      </Label>
-                      <Input
-                        id="manga-chapter"
-                        value={newManga.lastChapter}
-                        onChange={(e) => setNewManga({ ...newManga, lastChapter: e.target.value })}
-                        className="col-span-3"
-                        placeholder="Ex: Cap. 1095"
-                      />
-                    </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={addManga} className="bg-gradient-primary">
+                    <Button onClick={handleAddManga} className="bg-gradient-primary">
                       Adicionar
                     </Button>
                   </DialogFooter>
@@ -281,15 +200,22 @@ const Index = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">{manga.title}</CardTitle>
-                        <CardDescription>{manga.fansubSiteName}</CardDescription>
+                        <CardDescription>{manga.fansub_sites?.name}</CardDescription>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setSelectedMangaId(manga.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => toggleMangaStatus(manga.id)}
                         >
-                          <Bell className={`h-4 w-4 ${manga.isActive ? 'text-green-500' : 'text-gray-400'}`} />
+                          <Bell className={`h-4 w-4 ${manga.is_active ? 'text-green-500' : 'text-gray-400'}`} />
                         </Button>
                         <Button
                           variant="ghost"
@@ -303,11 +229,8 @@ const Index = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center">
-                      {manga.lastChapter && (
-                        <Badge variant="secondary">{manga.lastChapter}</Badge>
-                      )}
-                      <Badge variant={manga.isActive ? "default" : "secondary"}>
-                        {manga.isActive ? "Ativo" : "Pausado"}
+                      <Badge variant={manga.is_active ? "default" : "secondary"}>
+                        {manga.is_active ? "Ativo" : "Pausado"}
                       </Badge>
                     </div>
                   </CardContent>
@@ -372,7 +295,7 @@ const Index = () => {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={addFansubSite} className="bg-gradient-primary">
+                    <Button onClick={handleAddSite} className="bg-gradient-primary">
                       Adicionar
                     </Button>
                   </DialogFooter>
@@ -381,7 +304,7 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fansubSites.map(site => (
+              {sites.map(site => (
                 <Card key={site.id} className="hover:shadow-lg transition-shadow animate-fade-in">
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -392,7 +315,7 @@ const Index = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteFansubSite(site.id)}
+                        onClick={() => deleteSite(site.id)}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
@@ -402,7 +325,7 @@ const Index = () => {
                     <div className="space-y-2">
                       <p className="text-sm text-muted-foreground break-all">{site.url}</p>
                       <Badge>
-                        {mangas.filter(manga => manga.fansubSiteId === site.id).length} mangás
+                        {mangas.filter(manga => manga.fansub_site_id === site.id).length} mangás
                       </Badge>
                     </div>
                   </CardContent>
@@ -411,17 +334,6 @@ const Index = () => {
             </div>
           </TabsContent>
         </Tabs>
-
-        {/* Footer Info */}
-        <Card className="mt-8 bg-gradient-to-r from-manga-100 to-manga-200 border-manga-300">
-          <CardHeader>
-            <CardTitle className="text-center">🔗 Integração com Supabase</CardTitle>
-            <CardDescription className="text-center">
-              Para ativar o salvamento de dados e webhooks para automação com n8n, 
-              conecte este projeto ao Supabase clicando no botão verde no canto superior direito.
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     </div>
   );
